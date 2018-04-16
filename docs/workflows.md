@@ -6,10 +6,10 @@ It can also answer to synchronous queries and receive external events (also know
 ## Workflow Interface
 
 A workflow must define an interface class. All of its methods must have one of the following annotations:
-- @WorkflowMethod indicates an entry point to a workflow. It contains parameters such as timeouts and a task list. Required
-parameters (like executionStartToCloseTimeoutSeconds) that are not specified through the annotation must be provided at runtime.
-- @Signal indicates a method that reacts to external signals. It must have a `void` return type.
-- @Query indicates a method that reacts to synchronous query requests.
+- `@WorkflowMethod` indicates an entry point to a workflow. It contains parameters such as timeouts and a task list. Required
+parameters (like `executionStartToCloseTimeoutSeconds`) that are not specified through the annotation must be provided at runtime.
+- `@Signal` indicates a method that reacts to external signals. It must have a `void` return type.
+- `@Query` indicates a method that reacts to synchronous query requests.
 You can have more than one method with the same annotation.
 ```java
 public interface FileProcessingWorkflow {
@@ -29,8 +29,8 @@ public interface FileProcessingWorkflow {
 ```
 ## Starting workflow executions
 
-Given a workflow interface executing a workflow requires initializing a `WorkflowClient` instance, creating
-a client side stub to the workflow, and then calling a method annotated with @WorkflowMethod.
+A workflow interface executing a workflow requires initializing a `WorkflowClient` instance, creating
+a client-side stub to the workflow, and then calling a method annotated with `@WorkflowMethod`.
 ```java
 WorkflowClient workflowClient = WorkflowClient.newClient(cadenceServiceHost, cadenceServicePort, domain);
 // Create a workflow stub.
@@ -38,14 +38,14 @@ FileProcessingWorkflow workflow = workflowClient.newWorkflowStub(FileProcessingW
 ```
 There are two ways to start workflow execution: synchronously and asynchronously. Synchronous invocation starts a workflow
 and then waits for its completion. If the process that started the workflow crashes or stops the waiting, the workflow continues executing.
-Because workflows are potentially long running, and crashes of clients happen, it is not very commonly found in production use.
+Because workflows are potentially long running, and crashes of clients happen, this is not very commonly found in production use.
 Asynchronous start initiates workflow execution and immediately returns to the caller. This is the most common way to start
 workflows in production code.
 
 Synchronous start:
 ```java
 // Start a workflow and the wait for a result.
-// Note that if the waiting process is killed, the workflow will continue execution.
+// Note that if the waiting process is killed, the workflow will continue executing.
 String result = workflow.processFile(workflowArgs);
 ```
 Asynchronous:
@@ -69,10 +69,10 @@ String result = workflow.processFile(workflowArgs);
 ```
 ## Implementing Workflows
 
-A workflow implementation implements a workflow interface. Each time a new workflow execution is started,
+A workflow execution implements a workflow interface. Each time a new workflow execution is started,
 a new instance of the workflow implementation object is created. Then, one of the methods
-(depending on which workflow type has been started) annotated with @WorkflowMethod is invoked. As soon as this method
-returns the workflow, execution is closed. While workflow execution is open, it can receive calls to signal and query methods.
+(depending on which workflow type has been started) annotated with `@WorkflowMethod` is invoked. As soon as this method
+returns the workflow, execution is closed. While the workflow execution is open, it can receive calls to signal and query methods.
 No additional calls to workflow methods are allowed. The workflow object is stateful, so query and signal methods
 can communicate with the other parts of the workflow through workflow object fields.
 
@@ -80,13 +80,13 @@ can communicate with the other parts of the workflow through workflow object fie
 
 `Workflow.newActivityStub` returns a client-side stub that implements an activity interface.
 It takes activity type and activity options as arguments. Activity options are needed only if some of the required
-timeouts are not specified through the @ActivityMethod annotation.
+timeouts are not specified through the `@ActivityMethod` annotation.
 
 Calling a method on this interface invokes an activity that implements this method.
 An activity invocation synchronously blocks until the activity completes, fails, or times out. Even if activity
 execution takes a few months, the workflow code still sees it as a single synchronous invocation.
-Isn't it great? I doesn't matter what happens to the processes that host the workflow. The business logic code
-just sees a single method call.
+It doesn't matter what happens to the processes that host the workflow; the business logic code
+sees a single method call.
 ```java
 public class FileProcessingWorkflowImpl implements FileProcessingWorkflow {
 
@@ -135,8 +135,9 @@ with different options.
 
 Sometimes workflows need to perform certain operations in parallel.
 The `Workflow.async` static method allows you to invoke any activity asynchronously. The call returns a `Promise` result immediately.
-`Promise` is similar to both Java `Future` and `CompletionStage`. The `Promise` `get` blocks until a result is available.
-It also exposes the `thenApply` and `handle` methods. See the `Promise` JavaDoc for technical details about differences with `Future`.
+`Promise` is similar to both Java `Future` and `CompletionStage`. `Promise` `get` blocks until a result is available.
+It also exposes the `thenApply` and `handle` methods. See the `Promise` [Java documentation](https://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/services/simpleworkflow/flow/core/Promise.html)
+for technical details about differences with `Future`.
 
 To convert a synchronous call
 ```java
@@ -198,12 +199,12 @@ Besides activities, a workflow can also orchestrate other workflows.
 
 `Workflow.newChildWorkflowStub` returns a client-side stub that implements a child workflow interface.
  It takes a child workflow type and optional child workflow options as arguments. Workflow options may be needed to override
- the timeouts and task list if they differ from the ones defined in the @WorkflowMethod annotation or parent workflow.
+ the timeouts and task list if they differ from the ones defined in the `@WorkflowMethod` annotation or parent workflow.
 
- The first call to the child workflow stub must always be to a method annotated with @WorkflowMethod. Similarly to activities, a call
- can be synchronous or asynchronous using `Workflow.async`. The synchronous call blocks until a child workflow completes. The asynchronous call
+ The first call to the child workflow stub must always be to a method annotated with `@WorkflowMethod`. Similar to activities, a call
+ can be made synchronous or asynchronous by using `Workflow.async`. A synchronous call blocks until a child workflow completes. An asynchronous call
  returns a `Promise` that can be used to wait for the completion. After an async call returns the stub, it can be used to send signals to the child
- by calling methods annotated with `@SignalMethod`. Querying a child workflow by calling methods annotated with @QueryMethod
+ by calling methods annotated with `@SignalMethod`. Querying a child workflow by calling methods annotated with `@QueryMethod`
  from within workflow code is not supported. However, queries can be done from activities
  using the `WorkflowClient` provided stub.
  ```java
@@ -276,13 +277,13 @@ effects (such as activity invocations) are ignored because they are already reco
 When writing workflow logic, the replay is not visible, so the code should be written as it executes only once.
 This design puts the following constraints on the workflow implementation:
 - Do not use any mutable global variables because multiple instances of workflows are executed in parallel.
-- Do not call any non deterministic functions like non seeded random or UUID.randomUUID() directly form the workflow code.
+- Do not call any non-deterministic functions like non-seeded random or UUID.randomUUID() directly from the workflow code.
 Always do this in activities.
-- Don’t perform any IO or service calls as they are not usually deterministic. Use activities for this.
+- Don’t perform any IO or service calls because they are not usually deterministic. Use activities for this.
 - Only use `Workflow.currentTimeMillis()` to get the current time inside a workflow.
 - Do not use native Java `Thread` or any other multi-threaded classes like `ThreadPoolExecutor`. Use `Async.invoke`
 to execute code asynchronously.
-- Don't use any synchronization, locks, and other standard Java blocking concurrency-related classes besides those provided
+- Don't use any synchronization, locks, or other standard Java blocking concurrency-related classes besides those provided
 by the Workflow class. There is no need in explicit synchronization because multi-threaded code inside a workflow is
 executed one thread at a time and under a global lock.
   - Call `WorkflowThread.sleep` instead of `Thread.sleep`.
